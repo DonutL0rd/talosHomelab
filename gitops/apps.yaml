@@ -128,6 +128,7 @@ spec:
     targetRevision: 1.76.1
     helm:
       values: |
+        operatorTags: tag:k8s
         oauth:
           secretName: operator-oauth
           clientIdSecretKey: client_id
