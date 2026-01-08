@@ -90,25 +90,4 @@ spec:
     syncOptions:
       - CreateNamespace=true
 ---
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: hello-world
-  namespace: argocd
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-spec:
-  project: default
-  source:
-    repoURL: https://github.com/DonutL0rd/talosHomelab.git
-    targetRevision: main
-    path: apps/hello-world
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: default
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
+
