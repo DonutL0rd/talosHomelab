@@ -9,7 +9,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: argo.local.gd
+    - host: argo.k8s.crevex.org
       http:
         paths:
           - path: /

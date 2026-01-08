@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: bootstrap
+  name: demo-app
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -10,15 +10,20 @@ spec:
   source:
     repoURL: https://github.com/DonutL0rd/talosHomelab.git
     targetRevision: HEAD
-    path: infrastructure
-    directory:
-      recurse: true
+    path: apps/demo-app
   destination:
     server: https://kubernetes.default.svc
-    namespace: argocd
+    namespace: default
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+---
+# You can add more applications below using the "---" separator
+# apiVersion: argoproj.io/v1alpha1
+# kind: Application
+# metadata:
+#   name: another-app
+# ...
