@@ -90,4 +90,54 @@ spec:
     syncOptions:
       - CreateNamespace=true
 ---
-
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hello-world
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/DonutL0rd/talosHomelab.git
+    targetRevision: main
+    path: apps/hello-world
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tailscale-operator
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://pkgs.tailscale.com/helmcharts
+    chart: tailscale-operator
+    targetRevision: 1.76.1
+    helm:
+      values: |
+        oauth:
+          secretName: operator-oauth
+          clientIdSecretKey: client_id
+          clientSecretSecretKey: client_secret
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tailscale
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
