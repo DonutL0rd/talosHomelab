@@ -1,69 +1,68 @@
-# Talos Homelab - Kubernetes on Proxmox
+# Talos Homelab - GitOps Kubernetes Cluster
 
-This repository hosts the **GitOps** configuration for my personal Kubernetes cluster. The cluster is built on **Talos Linux** running on Proxmox VMs, and it uses **ArgoCD** to automatically sync the cluster state with this repository.
+This repository hosts the **GitOps** configuration for a Kubernetes cluster managed by **Talos Linux**. It utilizes **ArgoCD** to automatically synchronize the cluster state with this repository, ensuring infrastructure and applications are defined as code.
 
 ## 🏗 Architecture
 
 *   **OS:** [Talos Linux](https://www.talos.dev/) (Immutable, API-driven Kubernetes OS).
 *   **GitOps:** [ArgoCD](https://argo-cd.readthedocs.io/) (App-of-Apps pattern).
 *   **Ingress Controller:** [ingress-nginx](https://kubernetes.github.io/ingress-nginx/).
-*   **Load Balancer:** [MetalLB](https://metallbuniverse.tf/) (Layer 2 mode, advertising IPs `10.0.0.251-253`).
+*   **Load Balancer:** [MetalLB](https://metallbuniverse.tf/) (Layer 2 mode).
 
 ## 📂 Repository Structure
 
-The repository relies on the "App of Apps" pattern to keep things organized.
+The repository structure follows the "App of Apps" pattern for modular and scalable management.
 
-*   **`bootstrap.yaml`**: The **Root** Application. This is the only file applied manually. It tells ArgoCD to watch the `gitops/` directory.
-*   **`gitops/apps.yaml`**: The **Manager**. This file lists every application installed in the cluster (Infrastructure + User Apps).
-*   **`infrastructure/`**: System-level configurations.
-    *   `metallb/`: Load Balancer config.
-    *   `ingress-nginx/`: Ingress controller setup.
-    *   `argocd/`: ArgoCD self-management.
-*   **`apps/`**: User-facing applications.
-    *   `hello-world/`: Simple Nginx demo.
-    *   `demo-app/`: Podinfo demo.
-*   **`*.yaml` (Root)**: Talos machine configurations (`controlplane.yaml`, `worker.yaml`).
+```text
+├── bootstrap.yaml       # The Root Application. Applied manually to bootstrap ArgoCD.
+├── controlplane.yaml    # Talos Control Plane machine configuration.
+├── worker.yaml          # Talos Worker machine configuration.
+├── talosconfig          # Talos client configuration.
+├── kubeconfig           # Kubernetes client configuration.
+├── apps/                # User-facing applications.
+│   └── demo-app/        # Example application manifest.
+├── gitops/
+│   └── apps.yaml        # The Manager. Lists all apps (infra + user) for ArgoCD to manage.
+└── infrastructure/      # System-level configurations.
+    ├── argocd/          # ArgoCD self-management and configuration.
+    ├── ingress-nginx/   # Ingress controller setup.
+    └── metallb/         # MetalLB Load Balancer configuration.
+```
 
 ## 🚀 Bootstrapping the Cluster
 
-If the cluster is wiped, follow these steps to restore the entire state:
+To provision a new cluster from this repository:
 
-1.  **Provision Nodes:** Use `talosctl` to apply `controlplane.yaml` and `worker.yaml` to your VMs.
-2.  **Bootstrap GitOps:** Run the following command **once**:
+1.  **Provision Nodes:** Use `talosctl` to apply `controlplane.yaml` and `worker.yaml` to your nodes (VMs or Bare Metal).
+    ```bash
+    talosctl apply-config --insecure --nodes <node-ip> --file <role>.yaml
+    ```
+2.  **Bootstrap GitOps:** Apply the bootstrap manifest to install the root ArgoCD application. This is the only manual `kubectl` command required.
     ```bash
     kubectl apply -f bootstrap.yaml
     ```
-3.  **Wait:** ArgoCD will initialize, read `gitops/apps.yaml`, and automatically install MetalLB, Nginx, and all apps.
+3.  **Automatic Provisioning:** ArgoCD will detect the `bootstrap.yaml` application, which points to `gitops/apps.yaml`. It will then automatically install all infrastructure components (MetalLB, Ingress Nginx) and defined applications.
 
 ## 🌐 Network Access
 
-Since this runs on bare metal (Proxmox), we use MetalLB to assign "External IPs" from the home network LAN.
+This cluster uses MetalLB to announce LoadBalancer service IPs on the local network.
 
-*   **Ingress IP:** `10.0.0.251`
-*   **Domains:** `*.local.gd` (or your custom domain).
+*   **Ingress Controller:** Services are exposed via the Ingress Controller, which receives an IP from the MetalLB pool.
+*   **DNS:** Configure your local DNS or `/etc/hosts` to point your desired domains to the Ingress LoadBalancer IP.
 
-### Local Access (DNS)
-To access services, update your local computer's `/etc/hosts` file (Linux/Mac) or `C:\Windows\System32\drivers\etc\hosts` (Windows):
-
+### Example `/etc/hosts` configuration:
 ```text
-10.0.0.251  argo.local.gd
-10.0.0.251  hello.local.gd
+<load-balancer-ip>  argocd.local
+<load-balancer-ip>  myapp.local
 ```
 
 ## ➕ How to Add a New App
 
-1.  **Create Manifests:** Create a new folder in `apps/` (e.g., `apps/plex`) and add your standard Kubernetes YAML files (Deployment, Service, Ingress).
-2.  **Register App:** Edit `gitops/apps.yaml` and append a new `Application` block pointing to your new folder.
-3.  **Push:** Commit and push to GitHub.
-    ```bash
-    git add .
-    git commit -m "Add Plex"
-    git push
-    ```
-4.  **Done:** ArgoCD will detect the change and deploy the app automatically.
+1.  **Create Manifests:** Create a new directory in `apps/` containing your Kubernetes manifests (Deployment, Service, Ingress, etc.).
+2.  **Register App:** Update `gitops/apps.yaml` to include a new `Application` block pointing to your new directory.
+3.  **Push Changes:** Commit and push your changes to the repository. ArgoCD will automatically detect the change and deploy the application.
 
 ## 🛠 Troubleshooting
 
-*   **ArgoCD UI:** Access at `https://argo.local.gd`.
-*   **Force Sync:** If GitHub takes too long to trigger Argo, click "Refresh" in the ArgoCD UI.
-*   **Check Apps:** `kubectl get applications -n argocd`
+*   **ArgoCD UI:** Access the ArgoCD dashboard via the configured Ingress URL to monitor application status.
+*   **Sync Status:** If automatic sync is delayed, you can manually trigger a refresh via the ArgoCD UI or CLI.
